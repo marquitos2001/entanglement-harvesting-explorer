@@ -342,7 +342,7 @@ with st.sidebar:
         "\"Switching function-independent results for entanglement harvesting,\" "
         "[arXiv:2604.06303](https://doi.org/10.48550/arXiv.2604.06303)\n"
         "3. M. Morote Balboa, T. R. Perche, "
-        "[arXiv:2604.06303](https://doi.org/10.48550/arXiv.2604.06303) — SER"
+        "[arXiv:2604.06303](https://doi.org/10.48550/arXiv.2604.06303) — SER\n"
         "2. E. Tjoa, E. Martín-Martínez, "
         "\"When entanglement harvesting is not really harvesting,\" "
         "[Phys. Rev. D **104**, 125005 (2021)](https://doi.org/10.1103/PhysRevD.104.125005) — CMEE\n"
@@ -353,7 +353,7 @@ with st.sidebar:
 # MAIN AREA
 # ================================================================
 
-st.title("🔬 Entanglement Harvesting Explorer")
+st.title("Entanglement Harvesting Explorer")
 st.caption(
     f"Hermite basis: N_max = {E['NMAX']}  |  "
     f"T = {E['T_basis']}  |  L = {E['L_val']} |  "
