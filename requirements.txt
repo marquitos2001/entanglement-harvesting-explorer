@@ -1,0 +1,4 @@
+streamlit
+plotly
+h5py
+numpy
