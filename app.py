@@ -603,7 +603,6 @@ fig3.update_layout(
         else "No entanglement detected"
     ),
     xaxis_title="Ω",
-    yaxis_title=y_label,
     xaxis=dict(range=[0, float(om_max)]),
      yaxis=dict(
         range=[0, y_top_plot],
