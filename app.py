@@ -458,7 +458,7 @@ with top_right:
         name='χ(t) reconstructed',
     ))
     fig2.update_layout(
-        title=f"Basis reconstruction — Captured: {100 * captured:.2f}%",
+        title=f"Basis reconstruction",
         xaxis_title="t", yaxis_title="χ(t)",
         height=350, margin=dict(l=50, r=20, t=40, b=40),
         legend=dict(
