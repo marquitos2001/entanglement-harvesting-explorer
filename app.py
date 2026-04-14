@@ -474,32 +474,6 @@ with top_left:
     )
     st.plotly_chart(fig1, use_container_width=True)
 
-with top_right:
-    fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(
-        x=t_plot, y=chi_plot,
-        mode='lines', line=dict(color='green', width=2, dash='dot'),
-        name='χ(t) input',
-    ))
-    fig2.add_trace(go.Scatter(
-        x=t_plot, y=chi_reconstructed,
-        mode='lines', line=dict(color='blue', width=2),
-        name='χ(t) reconstructed',
-    ))
-    fig2.update_layout(
-        title=f"Basis reconstruction",
-        xaxis_title="t", yaxis_title="χ(t)",
-        height=350, margin=dict(l=50, r=20, t=40, b=40),
-        legend=dict(
-            orientation='h',
-            yanchor='bottom',
-            y=1.02,
-            xanchor='center',
-            x=0.8,
-            font=dict(size=11),
-        ),
-    )
-    st.plotly_chart(fig2, use_container_width=True)
     
 # Bottom: negativity (full width)
 
@@ -616,6 +590,34 @@ fig3.update_layout(
     hovermode='closest',
 )
 st.plotly_chart(fig3, use_container_width=True)
+
+
+with top_right:
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(
+        x=t_plot, y=chi_plot,
+        mode='lines', line=dict(color='green', width=2, dash='dot'),
+        name='χ(t) input',
+    ))
+    fig2.add_trace(go.Scatter(
+        x=t_plot, y=chi_reconstructed,
+        mode='lines', line=dict(color='blue', width=2),
+        name='χ(t) reconstructed',
+    ))
+    fig2.update_layout(
+        title=f"Basis reconstruction",
+        xaxis_title="t", yaxis_title="χ(t)",
+        height=350, margin=dict(l=50, r=20, t=40, b=40),
+        legend=dict(
+            orientation='h',
+            yanchor='bottom',
+            y=1.02,
+            xanchor='center',
+            x=0.8,
+            font=dict(size=11),
+        ),
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 
 # ================================================================
 # EXPORT
