@@ -160,7 +160,6 @@ def contract(MT, c_hat):
     intermediate = np.tensordot(MT, c_hat, axes=([1], [0]))
     return c_hat @ intermediate
 
-
 def analyze(chi_func):
     chi_vals = chi_func(E['t_grid'])
     chi_norm_sq = np.sum(chi_vals**2) * E['dt']
@@ -171,7 +170,7 @@ def analyze(chi_func):
     c_norm = np.linalg.norm(c_vec)
     if c_norm == 0:
         z = np.zeros(E['n_omega'])
-        return z, z, z, captured, np.zeros(E['n_basis']), 0.0, 0.0
+        return z, z, z, captured, c_tilde, 0.0, 0.0
     
     c_hat = c_vec / c_norm
     
@@ -191,7 +190,7 @@ def analyze(chi_func):
     neg_max = float(np.max(negativity))
     omega_at_max = float(E['omega_grid'][np.argmax(negativity)]) if neg_max > 0 else 0.0
     
-    return negativity, half_delta, w_re, captured, c_hat, neg_max, omega_at_max
+    return negativity, half_delta, w_re, captured, c_tilde, neg_max, omega_at_max
 
 
 # ================================================================
@@ -331,7 +330,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### About")
     st.markdown(
-        "**Entanglement Harvesting Explorer**(Alpha)\n\n"
+        "**Entanglement Harvesting Explorer** (Alpha version)\n\n"
         "by Marcos Morote-Balboa & T. Rick Perche\n\n"
         "Source code and Mathematica (.wl) files (coming soon): "
         "[GitHub](https://github.com/YOUR_USERNAME/YOUR_REPO)"
@@ -339,8 +338,7 @@ with st.sidebar:
     st.markdown("#### References")
     st.markdown(
         "1. M. Morote-Balboa, T. R. Perche, "
-        "\"Optimization of entanglement harvesting with arbitrary temporal profiles:
-         the limit of second order perturbation theory,\" "
+        "\"Optimization of entanglement harvesting with arbitrary temporal profiles:the limit of second order perturbation theory,\" "
         "[arXiv:2604.06303](https://doi.org/10.48550/arXiv.2604.06303)\n"
         "3. M. Morote-Balboa, T. R. Perche, "
         "[arXiv:2604.06303](https://doi.org/10.48550/arXiv.2604.06303) — SER\n"
@@ -366,7 +364,13 @@ if chi_func is None:
     st.stop()
 
 # ---- COMPUTE ----
-neg, half_delta, w_val, captured, c_hat, neg_max, omega_at_max = analyze(chi_func)
+neg, half_delta, w_val, captured, c_tilde, neg_max, omega_at_max = analyze(chi_func)
+
+# Reconstruct chi from basis coefficients (this is what the computation actually uses)
+chi_reconstructed_full = c_tilde @ E['h_basis']   # on the fine t_grid
+# Interpolate to the plotting grid
+t_plot = np.linspace(-6, 6, 1000)
+chi_reconstructed = np.interp(t_plot, E['t_grid'], chi_reconstructed_full)
 
 # Compute CMEE and SER at peak (safe: 0 if no entanglement)
 if neg_max > 0:
@@ -374,33 +378,27 @@ if neg_max > 0:
     abs_delta_peak = 2.0 * half_delta[idx_peak]
     w_peak = w_val[idx_peak]
     neg_peak = neg[idx_peak]
-    
-    # Both are non-negative by construction
-    # CMEE: I[ρ] = (|Δ| - W) / N
     cmee = max(0.0, (abs_delta_peak - w_peak) / neg_peak)
-    # SER:  Θ[ρ] = |Δ| / N
     ser = abs_delta_peak / neg_peak
 else:
     cmee = 0.0
     ser = 0.0
 
 # ---- METRICS ROW ----
-col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("Captured", f"{100 * captured:.2f}%")
-col2.metric("Max negativity", f"{neg_max:.3e}")
-col3.metric("at Ω =", f"{omega_at_max:.4f}")
-col4.metric("CMEE  I[ρ]", f"{cmee:.4f}" if neg_max > 0 else "0")
-col5.metric("SER  Θ[ρ]", f"{ser:.4f}" if neg_max > 0 else "0")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Max negativity", f"{neg_max:.3e}")
+col2.metric("at Ω =", f"{omega_at_max:.4f}")
+col3.metric("CMEE  I[ρ]", f"{cmee:.4f}" if neg_max > 0 else "0")
+col4.metric("SER  Θ[ρ]", f"{ser:.4f}" if neg_max > 0 else "0")
 
 # ---- PLOTS ----
-t_plot = np.linspace(-6, 6, 1000)
 try:
     chi_plot = chi_func(t_plot)
 except Exception as err:
     st.error(f"Error evaluating function: {err}")
     st.stop()
 
-# Top row: chi(t) and coefficients
+# Top row: original chi(t) and reconstructed comparison
 top_left, top_right = st.columns(2)
 
 with top_left:
@@ -408,7 +406,7 @@ with top_left:
     fig1.add_trace(go.Scatter(
         x=t_plot, y=chi_plot,
         mode='lines', line=dict(color='green', width=2),
-        name='χ(t)',
+        name='χ(t) input',
     ))
     fig1.update_layout(
         title=f"χ(t) — {func_label}",
@@ -418,20 +416,25 @@ with top_left:
     st.plotly_chart(fig1, use_container_width=True)
 
 with top_right:
-    c_mags = np.maximum(np.abs(c_hat), 1e-20)
     fig2 = go.Figure()
     fig2.add_trace(go.Scatter(
-        x=np.arange(E['n_basis']).tolist(), y=c_mags.tolist(),
-        mode='markers', marker=dict(color='purple', size=3),
+        x=t_plot, y=chi_plot,
+        mode='lines', line=dict(color='green', width=2, dash='dot'),
+        name='χ(t) input',
+    ))
+    fig2.add_trace(go.Scatter(
+        x=t_plot, y=chi_reconstructed,
+        mode='lines', line=dict(color='blue', width=2),
+        name='χ(t) reconstructed',
     ))
     fig2.update_layout(
-        title=f"Basis coefficients — Captured: {100 * captured:.2f}%",
-        xaxis_title="n", yaxis_title="|cₙ|/‖c‖",
-        yaxis_type="log", yaxis_range=[-18, 0],
+        title=f"Basis reconstruction",
+        xaxis_title="t", yaxis_title="χ'(t)",
         height=350, margin=dict(l=50, r=20, t=40, b=40),
+        #legend=dict(x=0.55, y=0.95, font=dict(size=11)),
     )
     st.plotly_chart(fig2, use_container_width=True)
-
+    
 # Bottom: negativity (full width)
 fig3 = go.Figure()
 fig3.add_trace(go.Scatter(
