@@ -333,7 +333,7 @@ with st.sidebar:
         "**Entanglement Harvesting Explorer** (Alpha version)\n\n"
         "by Marcos Morote-Balboa & T. Rick Perche\n\n"
         "Source code and Mathematica (.wl) files (coming soon): "
-        "[GitHub](https://github.com/YOUR_USERNAME/YOUR_REPO)"
+        "[GitHub](https://github.com/marquitos2001/entanglement-harvesting-explorer)"
     )
     st.markdown("#### References")
     st.markdown(
