@@ -450,7 +450,7 @@ with top_right:
     fig2.add_trace(go.Scatter(
         x=t_plot, y=chi_plot,
         mode='lines', line=dict(color='green', width=2, dash='dot'),
-        name='χ(t)',
+        name='χ(t) input',
     ))
     fig2.add_trace(go.Scatter(
         x=t_plot, y=chi_reconstructed,
@@ -458,15 +458,15 @@ with top_right:
         name='χ(t) reconstructed',
     ))
     fig2.update_layout(
-        title=f"Basis reconstruction",
+        title=f"Basis reconstruction — Captured: {100 * captured:.2f}%",
         xaxis_title="t", yaxis_title="χ(t)",
         height=350, margin=dict(l=50, r=20, t=40, b=40),
         legend=dict(
             orientation='h',
             yanchor='bottom',
-            y=1.03,
+            y=1.02,
             xanchor='center',
-            x=0.8,
+            x=0.5,
             font=dict(size=11),
         ),
     )
@@ -567,3 +567,74 @@ fig3.update_layout(
     hovermode='closest',
 )
 st.plotly_chart(fig3, use_container_width=True)
+
+# ================================================================
+# EXPORT
+# ================================================================
+
+st.markdown("---")
+st.subheader("📥 Export data")
+
+export_col1, export_col2, export_col3 = st.columns(3)
+
+with export_col1:
+    # CSV with all the plotted data
+    import io
+    csv_buffer = io.StringIO()
+    csv_buffer.write("# Entanglement Harvesting Explorer - Exported Data\n")
+    csv_buffer.write(f"# Function: {func_label}\n")
+    csv_buffer.write(f"# Captured: {100*captured:.4f}%\n")
+    csv_buffer.write(f"# Max negativity: {neg_max:.6e} at Omega = {omega_at_max:.2f}\n")
+    csv_buffer.write(f"# CMEE = {cmee:.6f}, SER = {ser:.6f}\n")
+    csv_buffer.write(f"# T = {E['T_basis']}, L = {E['L_val']}, Nmax = {E['NMAX']}\n")
+    csv_buffer.write("#\n")
+    csv_buffer.write("omega,negativity,neg_plus,neg_minus,half_delta,W\n")
+    for i in range(len(E['omega_grid'])):
+        csv_buffer.write(
+            f"{E['omega_grid'][i]:.4f},"
+            f"{neg[i]:.10e},"
+            f"{neg_plus[i]:.10e},"
+            f"{neg_minus[i]:.10e},"
+            f"{half_delta[i]:.10e},"
+            f"{w_val[i]:.10e}\n"
+        )
+    
+    st.download_button(
+        label="⬇ Download data (.csv)",
+        data=csv_buffer.getvalue(),
+        file_name="entanglement_data.csv",
+        mime="text/csv",
+    )
+
+with export_col2:
+    # Chi(t) reconstruction data
+    csv_chi = io.StringIO()
+    csv_chi.write("# Chi(t) - input and reconstructed\n")
+    csv_chi.write(f"# Function: {func_label}\n")
+    csv_chi.write(f"# Captured: {100*captured:.4f}%\n")
+    csv_chi.write("#\n")
+    csv_chi.write("t,chi_input,chi_reconstructed\n")
+    for i in range(len(t_plot)):
+        csv_chi.write(
+            f"{t_plot[i]:.4f},"
+            f"{chi_plot[i]:.10e},"
+            f"{chi_reconstructed[i]:.10e}\n"
+        )
+    
+    st.download_button(
+        label="⬇ Download χ(t) (.csv)",
+        data=csv_chi.getvalue(),
+        file_name="chi_data.csv",
+        mime="text/csv",
+    )
+
+with export_col3:
+    # Download the negativity plot as HTML (interactive, can open in browser)
+    plot_html = fig3.to_html(include_plotlyjs="cdn", full_html=True)
+    
+    st.download_button(
+        label="⬇ Download plot (.html)",
+        data=plot_html,
+        file_name="negativity_plot.html",
+        mime="text/html",
+    )
