@@ -400,7 +400,11 @@ neg, neg_plus, neg_minus, half_delta, w_val, captured, c_tilde, neg_max, omega_a
 chi_reconstructed_full = c_tilde @ E['h_basis']
 t_plot = np.linspace(-6, 6, 1000)
 chi_reconstructed = np.interp(t_plot, E['t_grid'], chi_reconstructed_full)
-
+# L2 relative error between input and reconstruction
+chi_input_full = chi_func(E['t_grid'])
+l2_diff = np.sqrt(np.sum((chi_input_full - chi_reconstructed_full)**2) * E['dt'])
+l2_input = np.sqrt(np.sum(chi_input_full**2) * E['dt'])
+l2_relative_error = l2_diff / l2_input if l2_input > 0 else 0.0
 # Compute CMEE and SER at peak
 if neg_max > 0:
     idx_peak = np.argmax(neg)
@@ -414,12 +418,12 @@ else:
     ser = 0.0
 
 # ---- METRICS ROW ----
-col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 2.5, 2.5])
-col1.metric("Captured", f"{100 * captured:.2f}%")
-col2.metric("Max negativity", f"{neg_max:.3e}")
-col3.metric("at Ω =", f"{omega_at_max:.2f}")
-col4.metric("Communication-mediated entanglement estimator (CMEE) I[ρ]", f"{cmee:.4f}" if neg_max > 0 else "0")
-col5.metric("Signalling-to-entanglement ratio (SER) Θ[ρ]", f"{ser:.4f}" if neg_max > 0 else "0")
+col1, col2, col3, col4, col5 = st.columns([ 1, 1, 2.5, 2.5, 1.5])
+col1.metric("Max negativity", f"{neg_max:.3e}")
+col2.metric("at Ω =", f"{omega_at_max:.2f}")
+col3.metric("Communication-mediated entanglement estimator (CMEE) I[ρ]", f"{cmee:.4f}" if neg_max > 0 else "0")
+col4.metric("Signalling-to-entanglement ratio (SER) Θ[ρ]", f"{ser:.4f}" if neg_max > 0 else "0")
+col5.metric("L² relative error", f"{l2_relative_error:.2e}")
 
 # ---- PLOTS ----
 try:
@@ -458,7 +462,7 @@ with top_right:
         name='χ(t) reconstructed',
     ))
     fig2.update_layout(
-        title=f"Basis reconstruction — Captured: {100 * captured:.2f}%",
+        title=f"Basis reconstruction",
         xaxis_title="t", yaxis_title="χ(t)",
         height=350, margin=dict(l=50, r=20, t=40, b=40),
         legend=dict(
@@ -466,7 +470,7 @@ with top_right:
             yanchor='bottom',
             y=1.02,
             xanchor='center',
-            x=0.5,
+            x=0.8,
             font=dict(size=11),
         ),
     )
@@ -578,7 +582,6 @@ st.subheader("📥 Export data")
 export_col1, export_col2, export_col3 = st.columns(3)
 
 with export_col1:
-    # CSV with all the plotted data
     import io
     csv_buffer = io.StringIO()
     csv_buffer.write("# Entanglement Harvesting Explorer - Exported Data\n")
@@ -600,14 +603,55 @@ with export_col1:
         )
     
     st.download_button(
-        label="⬇ Download data (.csv)",
+        label="⬇ Data (.csv)",
         data=csv_buffer.getvalue(),
         file_name="entanglement_data.csv",
         mime="text/csv",
     )
-
+    
 with export_col2:
-    # Chi(t) reconstruction data
+    # Mathematica .dat file
+    # Format: {{omega1, neg1, negP1, negM1, hd1, w1}, {omega2, ...}, ...}
+    dat_buffer = io.StringIO()
+    dat_buffer.write(f"(* Entanglement Harvesting Explorer - Mathematica Export *)\n")
+    dat_buffer.write(f"(* Function: {func_label} *)\n")
+    dat_buffer.write(f"(* Captured: {100*captured:.4f}% *)\n")
+    dat_buffer.write(f"(* Max negativity: {neg_max:.6e} at Omega = {omega_at_max:.2f} *)\n")
+    dat_buffer.write(f"(* CMEE = {cmee:.6f}, SER = {ser:.6f} *)\n")
+    dat_buffer.write(f"(* T = {E['T_basis']}, L = {E['L_val']}, Nmax = {E['NMAX']} *)\n")
+    dat_buffer.write(f"(* Columns: omega, negativity, neg_plus, neg_minus, half_delta, W *)\n\n")
+    
+    dat_buffer.write("data = {\n")
+    n = len(E['omega_grid'])
+    for i in range(n):
+        line = (
+            f"  {{{E['omega_grid'][i]:.4f}, "
+            f"{neg[i]:.10e}, "
+            f"{neg_plus[i]:.10e}, "
+            f"{neg_minus[i]:.10e}, "
+            f"{half_delta[i]:.10e}, "
+            f"{w_val[i]:.10e}}}"
+        )
+        if i < n - 1:
+            line += ","
+        dat_buffer.write(line + "\n")
+    dat_buffer.write("};\n\n")
+    
+    dat_buffer.write("(* Quick plot: *)\n")
+    dat_buffer.write("ListLinePlot[{data[[All, {1, 2}]], data[[All, {1, 5}]]},\n")
+    dat_buffer.write("  PlotStyle -> {{Blue, Thick}, {Red, Thick}},\n")
+    dat_buffer.write('  PlotLegends -> {"Negativity", "1/2|Delta|"},\n')
+    dat_buffer.write('  FrameLabel -> {"\\[CapitalOmega]", ""},\n')
+    dat_buffer.write("  Frame -> True, PlotRange -> All]\n")
+    
+    st.download_button(
+        label="⬇ Data (.dat)",
+        data=dat_buffer.getvalue(),
+        file_name="entanglement_data.dat",
+        mime="text/plain",
+    )
+
+with export_col3:
     csv_chi = io.StringIO()
     csv_chi.write("# Chi(t) - input and reconstructed\n")
     csv_chi.write(f"# Function: {func_label}\n")
@@ -622,19 +666,10 @@ with export_col2:
         )
     
     st.download_button(
-        label="⬇ Download χ(t) (.csv)",
+        label="⬇ χ(t) (.csv)",
         data=csv_chi.getvalue(),
         file_name="chi_data.csv",
         mime="text/csv",
     )
 
-with export_col3:
-    # Download the negativity plot as HTML (interactive, can open in browser)
-    plot_html = fig3.to_html(include_plotlyjs="cdn", full_html=True)
-    
-    st.download_button(
-        label="⬇ Download plot (.html)",
-        data=plot_html,
-        file_name="negativity_plot.html",
-        mime="text/html",
-    )
+
