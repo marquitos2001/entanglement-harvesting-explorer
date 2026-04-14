@@ -19,6 +19,14 @@ st.set_page_config(
     layout="wide",
 )
 
+# Remove top padding
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 1rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 # ================================================================
 # SAFE MATH EXPRESSION PARSER
 # ================================================================
@@ -170,7 +178,7 @@ def analyze(chi_func):
     c_norm = np.linalg.norm(c_vec)
     if c_norm == 0:
         z = np.zeros(E['n_omega'])
-        return z, z, z, z, z, captured, c_tilde, 0.0, 0.0
+        return z, z, z, z, z, z, z, captured, c_tilde, 0.0, 0.0
     
     c_hat = c_vec / c_norm
     
@@ -197,11 +205,13 @@ def analyze(chi_func):
     neg_minus = np.maximum(0.0, abs_gf_no_h - w_re)
     
     half_delta = np.sqrt(d_re**2 + d_im**2) / 2.0
+    abs_H = np.sqrt(h_re**2 + h_im**2)
+    abs_D = np.sqrt(d_re**2 + d_im**2)
     
     neg_max = float(np.max(negativity))
     omega_at_max = float(E['omega_grid'][np.argmax(negativity)]) if neg_max > 0 else 0.0
     
-    return negativity, neg_plus, neg_minus, half_delta, w_re, captured, c_tilde, neg_max, omega_at_max
+    return negativity, neg_plus, neg_minus, half_delta, w_re, abs_H, abs_D, captured, c_tilde, neg_max, omega_at_max
 
 
 # ================================================================
@@ -394,7 +404,7 @@ if chi_func is None:
     st.stop()
 
 # ---- COMPUTE ----
-neg, neg_plus, neg_minus, half_delta, w_val, captured, c_tilde, neg_max, omega_at_max = analyze(chi_func)
+neg, neg_plus, neg_minus, half_delta, w_val, abs_H, abs_D, captured, c_tilde, neg_max, omega_at_max = analyze(chi_func)
 
 # Reconstruct chi from basis coefficients
 chi_reconstructed_full = c_tilde @ E['h_basis']
@@ -577,99 +587,125 @@ st.plotly_chart(fig3, use_container_width=True)
 # ================================================================
 
 st.markdown("---")
-st.subheader("📥 Export data")
 
-export_col1, export_col2, export_col3 = st.columns(3)
-
-with export_col1:
+with st.expander("📥 Export data", expanded=False):
+    
     import io
-    csv_buffer = io.StringIO()
-    csv_buffer.write("# Entanglement Harvesting Explorer - Exported Data\n")
-    csv_buffer.write(f"# Function: {func_label}\n")
-    csv_buffer.write(f"# Captured: {100*captured:.4f}%\n")
-    csv_buffer.write(f"# Max negativity: {neg_max:.6e} at Omega = {omega_at_max:.2f}\n")
-    csv_buffer.write(f"# CMEE = {cmee:.6f}, SER = {ser:.6f}\n")
-    csv_buffer.write(f"# T = {E['T_basis']}, L = {E['L_val']}, Nmax = {E['NMAX']}\n")
-    csv_buffer.write("#\n")
-    csv_buffer.write("omega,negativity,neg_plus,neg_minus,half_delta,W\n")
-    for i in range(len(E['omega_grid'])):
-        csv_buffer.write(
-            f"{E['omega_grid'][i]:.4f},"
-            f"{neg[i]:.10e},"
-            f"{neg_plus[i]:.10e},"
-            f"{neg_minus[i]:.10e},"
-            f"{half_delta[i]:.10e},"
-            f"{w_val[i]:.10e}\n"
-        )
-    
-    st.download_button(
-        label="⬇ Data (.csv)",
-        data=csv_buffer.getvalue(),
-        file_name="entanglement_data.csv",
-        mime="text/csv",
-    )
-    
-with export_col2:
-    # Mathematica .dat file
-    # Format: {{omega1, neg1, negP1, negM1, hd1, w1}, {omega2, ...}, ...}
-    dat_buffer = io.StringIO()
-    dat_buffer.write(f"(* Entanglement Harvesting Explorer - Mathematica Export *)\n")
-    dat_buffer.write(f"(* Function: {func_label} *)\n")
-    dat_buffer.write(f"(* Captured: {100*captured:.4f}% *)\n")
-    dat_buffer.write(f"(* Max negativity: {neg_max:.6e} at Omega = {omega_at_max:.2f} *)\n")
-    dat_buffer.write(f"(* CMEE = {cmee:.6f}, SER = {ser:.6f} *)\n")
-    dat_buffer.write(f"(* T = {E['T_basis']}, L = {E['L_val']}, Nmax = {E['NMAX']} *)\n")
-    dat_buffer.write(f"(* Columns: omega, negativity, neg_plus, neg_minus, half_delta, W *)\n\n")
-    
-    dat_buffer.write("data = {\n")
-    n = len(E['omega_grid'])
-    for i in range(n):
-        line = (
-            f"  {{{E['omega_grid'][i]:.4f}, "
-            f"{neg[i]:.10e}, "
-            f"{neg_plus[i]:.10e}, "
-            f"{neg_minus[i]:.10e}, "
-            f"{half_delta[i]:.10e}, "
-            f"{w_val[i]:.10e}}}"
-        )
-        if i < n - 1:
-            line += ","
-        dat_buffer.write(line + "\n")
-    dat_buffer.write("};\n\n")
-    
-    dat_buffer.write("(* Quick plot: *)\n")
-    dat_buffer.write("ListLinePlot[{data[[All, {1, 2}]], data[[All, {1, 5}]]},\n")
-    dat_buffer.write("  PlotStyle -> {{Blue, Thick}, {Red, Thick}},\n")
-    dat_buffer.write('  PlotLegends -> {"Negativity", "1/2|Delta|"},\n')
-    dat_buffer.write('  FrameLabel -> {"\\[CapitalOmega]", ""},\n')
-    dat_buffer.write("  Frame -> True, PlotRange -> All]\n")
-    
-    st.download_button(
-        label="⬇ Data (.dat)",
-        data=dat_buffer.getvalue(),
-        file_name="entanglement_data.dat",
-        mime="text/plain",
-    )
+    import zipfile
 
-with export_col3:
-    csv_chi = io.StringIO()
-    csv_chi.write("# Chi(t) - input and reconstructed\n")
-    csv_chi.write(f"# Function: {func_label}\n")
-    csv_chi.write(f"# Captured: {100*captured:.4f}%\n")
-    csv_chi.write("#\n")
-    csv_chi.write("t,chi_input,chi_reconstructed\n")
-    for i in range(len(t_plot)):
-        csv_chi.write(
-            f"{t_plot[i]:.4f},"
-            f"{chi_plot[i]:.10e},"
-            f"{chi_reconstructed[i]:.10e}\n"
+    def make_csv(x, y, xlabel, ylabel, metadata_lines):
+        buf = io.StringIO()
+        for line in metadata_lines:
+            buf.write(f"# {line}\n")
+        buf.write(f"{xlabel},{ylabel}\n")
+        for xi, yi in zip(x, y):
+            buf.write(f"{xi:.4f},{yi:.10e}\n")
+        return buf.getvalue()
+
+    def make_dat(x, y):
+        buf = io.StringIO()
+        buf.write("{\n")
+        n = len(x)
+        for i in range(n):
+            line = f"  {{{x[i]:.4f}, {y[i]:.10e}}}"
+            if i < n - 1:
+                line += ","
+            buf.write(line + "\n")
+        buf.write("}\n")
+        return buf.getvalue()
+
+    meta = [
+        f"Function: {func_label}",
+        f"Captured: {100*captured:.4f}%",
+        f"L2 relative error: {l2_relative_error:.6e}",
+        f"Max negativity: {neg_max:.6e} at Omega = {omega_at_max:.2f}",
+        f"CMEE = {cmee:.6f}, SER = {ser:.6f}",
+        f"T = {E['T_basis']}, L = {E['L_val']}, Nmax = {E['NMAX']}",
+    ]
+
+    omega = E['omega_grid']
+    abs_delta = 2.0 * half_delta
+
+    # Define all exportable quantities
+    exports = {
+        "Negativity":       (omega, neg,              "omega", "negativity"),
+        "Negativity+":      (omega, neg_plus,         "omega", "neg_plus"),
+        "Negativity-":      (omega, neg_minus,        "omega", "neg_minus"),
+        "Signalling":       (omega, abs_delta,        "omega", "abs_delta"),
+        "HadamardAB":       (omega, abs_H,            "omega", "abs_H"),
+        "Noise":            (omega, w_val,            "omega", "W"),
+        "Chi_reconstructed":(t_plot, chi_reconstructed,"t",    "chi_reconstructed"),
+    }
+
+    with st.expander("📖 File format documentation"):
+        st.markdown(
+            "**CSV files:** Comma-separated values. "
+            "Lines starting with `#` are metadata. "
+            "Data starts after the last `#` line.\n\n"
+            "**Python:**\n"
+            "```\n"
+            "import numpy as np\n"
+            "n_skip = 0\n"
+            "with open('Negativity.csv') as f:\n"
+            "    for line in f:\n"
+            "        if line.startswith('#'): n_skip += 1\n"
+            "        else: break\n"
+            "data = np.genfromtxt('Negativity.csv', delimiter=',', skip_header=n_skip+1)\n"
+            "omega, values = data[:, 0], data[:, 1]\n"
+            "```\n\n"
+            "**DAT files (Mathematica):** Each file is a pure list of "
+            "`{x, y}` pairs. Load and assign to any variable:\n\n"
+            "```\n"
+            "listN = << \"Negativity.dat\";\n"
+            "listDelta = << \"Signalling.dat\";\n"
+            "ListLinePlot[{listN, listDelta}, Frame -> True]\n"
+            "```"
         )
-    
-    st.download_button(
-        label="⬇ χ(t) (.csv)",
-        data=csv_chi.getvalue(),
-        file_name="chi_data.csv",
-        mime="text/csv",
-    )
 
+    st.markdown("**Individual files**")
 
+    # Create rows of 4 buttons
+    items = list(exports.items())
+    for row_start in range(0, len(items), 4):
+        row_items = items[row_start:row_start + 4]
+        cols = st.columns(len(row_items))
+        for col, (name, (x, y, xlabel, ylabel)) in zip(cols, row_items):
+            with col:
+                st.markdown(f"**{name}**")
+                st.download_button(
+                    f"⬇ .csv",
+                    make_csv(x, y, xlabel, ylabel, meta),
+                    f"{name}.csv", "text/csv",
+                    key=f"csv_{name}")
+                st.download_button(
+                    f"⬇ .dat",
+                    make_dat(x, y),
+                    f"{name}.dat", "text/plain",
+                    key=f"dat_{name}")
+
+    st.markdown("---")
+    st.markdown("**Download all**")
+
+    all_col1, all_col2, all_col3 = st.columns([1, 1, 3])
+
+    with all_col1:
+        zip_csv = io.BytesIO()
+        with zipfile.ZipFile(zip_csv, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for name, (x, y, xlabel, ylabel) in exports.items():
+                zf.writestr(f"{name}.csv", make_csv(x, y, xlabel, ylabel, meta))
+        st.download_button(
+            "⬇ All (.csv.zip)",
+            zip_csv.getvalue(),
+            "entanglement_data_csv.zip",
+            "application/zip")
+
+    with all_col2:
+        zip_dat = io.BytesIO()
+        with zipfile.ZipFile(zip_dat, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for name, (x, y, xlabel, ylabel) in exports.items():
+                zf.writestr(f"{name}.dat", make_dat(x, y))
+        st.download_button(
+            "⬇ All (.dat.zip)",
+            zip_dat.getvalue(),
+            "entanglement_data_dat.zip",
+            "application/zip")
