@@ -170,7 +170,7 @@ def analyze(chi_func):
     c_norm = np.linalg.norm(c_vec)
     if c_norm == 0:
         z = np.zeros(E['n_omega'])
-        return z, z, z, captured, c_tilde, 0.0, 0.0
+        return z, z, z, z, z, captured, c_tilde, 0.0, 0.0
     
     c_hat = c_vec / c_norm
     
@@ -180,17 +180,28 @@ def analyze(chi_func):
     d_re = contract(E['DRealT'], c_hat)
     d_im = contract(E['DImagT'], c_hat)
     
+    # Full G_F = (H + iD)/2
     gf_re = (h_re - d_im) / 2.0
     gf_im = (h_im + d_re) / 2.0
     abs_gf = np.sqrt(gf_re**2 + gf_im**2)
     
+    # N: full negativity
     negativity = np.maximum(0.0, abs_gf - w_re)
+    
+    # N+: negativity when Delta=0 (only H contributes)
+    abs_gf_no_delta = np.sqrt(h_re**2 + h_im**2) / 2.0
+    neg_plus = np.maximum(0.0, abs_gf_no_delta - w_re)
+    
+    # N-: negativity when H=0 (only Delta contributes)
+    abs_gf_no_h = np.sqrt(d_re**2 + d_im**2) / 2.0
+    neg_minus = np.maximum(0.0, abs_gf_no_h - w_re)
+    
     half_delta = np.sqrt(d_re**2 + d_im**2) / 2.0
     
     neg_max = float(np.max(negativity))
     omega_at_max = float(E['omega_grid'][np.argmax(negativity)]) if neg_max > 0 else 0.0
     
-    return negativity, half_delta, w_re, captured, c_tilde, neg_max, omega_at_max
+    return negativity, neg_plus, neg_minus, half_delta, w_re, captured, c_tilde, neg_max, omega_at_max
 
 
 # ================================================================
@@ -267,30 +278,49 @@ with st.sidebar:
         params = {}
         
         if family == "Gaussian":
-            params['t0'] = st.slider("t₀", -3.0, 3.0, 0.0, 0.1)
+            params['t0'] = 0.0
             params['sigma'] = st.slider("σ", 0.3, 3.0, 1.0, 0.05)
+            func_label = "exp(−t²/(2σ²))"
+        
         elif family == "Gaussian pair":
             params['sigma'] = st.slider("σ", 0.3, 3.0, 1.0, 0.05)
-            params['separation'] = st.slider("separation", 0.1, 3.0, 1.0, 0.1)
+            params['separation'] = st.slider("separation d", 0.1, 3.0, 1.0, 0.1)
+            func_label = "exp(−(t−d)²/(2σ²)) + exp(−(t+d)²/(2σ²))"
+        
         elif family == "Bump":
             params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
+            func_label = "exp(−T₀²/(T₀²−t²)) · θ(T₀−|t|)"
+        
         elif family == "Cos² window":
             params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
+            func_label = "cos²(πt/(2T₀)) · θ(T₀−|t|)"
+        
         elif family == "Poly bump":
             params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
             params['n'] = st.slider("n (power)", 1, 8, 3, 1)
+            func_label = "(1−(t/T₀)²)ⁿ · θ(T₀−|t|)"
+        
         elif family == "Top hat":
             params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
+            func_label = "θ(T₀−|t|)"
+        
         elif family == "Smooth step":
             params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
             params['alpha'] = st.slider("α (steepness)", 1.0, 20.0, 5.0, 0.5)
+            func_label = "¼(1+tanh(α(t+T₀)))(1−tanh(α(t−T₀)))"
+        
         elif family == "Gauss × cos":
             params['sigma'] = st.slider("σ", 0.3, 3.0, 1.0, 0.05)
             params['freq'] = st.slider("ω_cos", 0.5, 15.0, 3.0, 0.5)
+            func_label = "exp(−t²/(2σ²)) · cos(ωt)"
+        
         elif family == "Lorentzian":
             params['gamma'] = st.slider("γ", 0.3, 3.0, 1.0, 0.05)
+            func_label = "1/(1+(t/γ)²)"
+        
         elif family == "Sech":
-            params['width'] = st.slider("width", 0.3, 3.0, 1.0, 0.05)
+            params['width'] = st.slider("width w", 0.3, 3.0, 1.0, 0.05)
+            func_label = "sech(t/w)"
         
         chi_func = make_chi(family, params)
     
@@ -333,7 +363,7 @@ with st.sidebar:
         "**Entanglement Harvesting Explorer** (Alpha version)\n\n"
         "by Marcos Morote-Balboa & T. Rick Perche\n\n"
         "Source code and Mathematica (.wl) files (coming soon): "
-        "[GitHub](https://github.com/marquitos2001/entanglement-harvesting-explorer)"
+        "[GitHub](https://github.com/YOUR_USERNAME/YOUR_REPO)"
     )
     st.markdown("#### References")
     st.markdown(
@@ -364,15 +394,14 @@ if chi_func is None:
     st.stop()
 
 # ---- COMPUTE ----
-neg, half_delta, w_val, captured, c_tilde, neg_max, omega_at_max = analyze(chi_func)
+neg, neg_plus, neg_minus, half_delta, w_val, captured, c_tilde, neg_max, omega_at_max = analyze(chi_func)
 
-# Reconstruct chi from basis coefficients (this is what the computation actually uses)
-chi_reconstructed_full = c_tilde @ E['h_basis']   # on the fine t_grid
-# Interpolate to the plotting grid
+# Reconstruct chi from basis coefficients
+chi_reconstructed_full = c_tilde @ E['h_basis']
 t_plot = np.linspace(-6, 6, 1000)
 chi_reconstructed = np.interp(t_plot, E['t_grid'], chi_reconstructed_full)
 
-# Compute CMEE and SER at peak (safe: 0 if no entanglement)
+# Compute CMEE and SER at peak
 if neg_max > 0:
     idx_peak = np.argmax(neg)
     abs_delta_peak = 2.0 * half_delta[idx_peak]
@@ -385,11 +414,12 @@ else:
     ser = 0.0
 
 # ---- METRICS ROW ----
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Max negativity", f"{neg_max:.3e}")
-col2.metric("at Ω =", f"{omega_at_max:.4f}")
-col3.metric("CMEE  I[ρ]", f"{cmee:.4f}" if neg_max > 0 else "0")
-col4.metric("SER  Θ[ρ]", f"{ser:.4f}" if neg_max > 0 else "0")
+col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 2.5, 2.5])
+col1.metric("Captured", f"{100 * captured:.2f}%")
+col2.metric("Max negativity", f"{neg_max:.3e}")
+col3.metric("at Ω =", f"{omega_at_max:.2f}")
+col4.metric("Communication-mediated entanglement estimator (CMEE) I[ρ]", f"{cmee:.4f}" if neg_max > 0 else "0")
+col5.metric("Signalling-to-entanglement ratio (SER) Θ[ρ]", f"{ser:.4f}" if neg_max > 0 else "0")
 
 # ---- PLOTS ----
 try:
@@ -436,19 +466,6 @@ with top_right:
     st.plotly_chart(fig2, use_container_width=True)
     
 # Bottom: negativity (full width)
-fig3 = go.Figure()
-fig3.add_trace(go.Scatter(
-    x=E['omega_grid'].tolist(), y=neg.tolist(),
-    mode='lines',
-    name=r'λ⁻² 𝒩',
-    line=dict(color='blue', width=2),
-))
-fig3.add_trace(go.Scatter(
-    x=E['omega_grid'].tolist(), y=half_delta.tolist(),
-    mode='lines',
-    name=r'½ λ⁻² |Δ|',
-    line=dict(color='red', width=2),
-))
 
 # Determine x-range
 if neg_max > 0:
@@ -457,18 +474,74 @@ if neg_max > 0:
 else:
     om_max = E['omega_grid'][-1]
 
-# Determine y-range: peak sits at ~75% of axis height
+# CROP to visible range
+visible_mask = (E['omega_grid'] >= 0) & (E['omega_grid'] <= om_max)
+omega_vis = E['omega_grid'][visible_mask]
+neg_vis = neg[visible_mask]
+neg_plus_vis = neg_plus[visible_mask]
+neg_minus_vis = neg_minus[visible_mask]
+hd_vis = half_delta[visible_mask]
+w_vis = w_val[visible_mask]
+
+# Y-range: negativity peak at 70%
 if neg_max > 0:
-    visible_mask = (E['omega_grid'] >= 0) & (E['omega_grid'] <= om_max)
-    neg_vis = neg[visible_mask]
     vis_neg_peak = float(np.max(neg_vis))
     y_top = vis_neg_peak / 0.70
 else:
     y_top = 1.0
 
+# Precompute CMEE and SER for every visible omega point
+abs_delta_all = 2.0 * hd_vis
+cmee_all = np.where(neg_vis > 0,
+                     np.maximum(0.0, (abs_delta_all - w_vis) / np.where(neg_vis > 0, neg_vis, 1.0)),
+                     0.0)
+ser_all = np.where(neg_vis > 0,
+                    abs_delta_all / np.where(neg_vis > 0, neg_vis, 1.0),
+                    0.0)
+
+# Single hover text (shown once via the N trace)
+hover_main = [
+    f"Ω = {o:.2f}<br>"
+    f"𝒩 = {n:.3e}<br>"
+    f"½|Δ| = {h:.3e}<br>"
+    f"CMEE = {c:.4f}<br>"
+    f"SER = {s:.4f}"
+    for o, n, h, c, s in zip(omega_vis, neg_vis, hd_vis, cmee_all, ser_all)
+]
+
+fig3 = go.Figure()
+fig3.add_trace(go.Scatter(
+    x=omega_vis.tolist(), y=neg_vis.tolist(),
+    mode='lines',
+    name='λ⁻² 𝒩',
+    line=dict(color='blue', width=2),
+    text=hover_main, hoverinfo='text',
+))
+fig3.add_trace(go.Scatter(
+    x=omega_vis.tolist(), y=neg_plus_vis.tolist(),
+    mode='lines',
+    name='λ⁻² 𝒩⁺ (Δ=0)',
+    line=dict(color='royalblue', width=1.5, dash='dash'),
+    hoverinfo='skip',
+))
+fig3.add_trace(go.Scatter(
+    x=omega_vis.tolist(), y=neg_minus_vis.tolist(),
+    mode='lines',
+    name='λ⁻² 𝒩⁻ (H=0)',
+    line=dict(color='cornflowerblue', width=1.5, dash='dot'),
+    hoverinfo='skip',
+))
+fig3.add_trace(go.Scatter(
+    x=omega_vis.tolist(), y=hd_vis.tolist(),
+    mode='lines',
+    name='½ λ⁻² |Δ|',
+    line=dict(color='red', width=2),
+    hoverinfo='skip',
+))
+
 fig3.update_layout(
     title=(
-        f"Negativity — max = {neg_max:.3e}  at Ω = {omega_at_max:.4f}"
+        f"max 𝒩 = {neg_max:.3e}  at Ω = {omega_at_max:.2f}"
         f"   |   CMEE = {cmee:.4f}   |   SER = {ser:.4f}"
         if neg_max > 0
         else "No entanglement detected"
@@ -477,12 +550,13 @@ fig3.update_layout(
     xaxis=dict(range=[0, float(om_max)]),
     yaxis=dict(
         range=[0, y_top],
-        autorange=False,            # KEY: prevent plotly from overriding
+        autorange=False,
         exponentformat='power',
         showexponent='all',
     ),
-    height=400,
+    height=450,
     margin=dict(l=60, r=20, t=40, b=40),
-    legend=dict(x=0.75, y=0.95, font=dict(size=14)),
+    legend=dict(x=0.70, y=0.95, font=dict(size=12)),
+    hovermode='closest',
 )
 st.plotly_chart(fig3, use_container_width=True)
