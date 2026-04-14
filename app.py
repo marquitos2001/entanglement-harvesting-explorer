@@ -464,7 +464,7 @@ with top_right:
         legend=dict(
             orientation='h',
             yanchor='bottom',
-            y=1.04,
+            y=1.03,
             xanchor='center',
             x=0.8,
             font=dict(size=11),
