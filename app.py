@@ -268,6 +268,18 @@ def make_chi(family, params):
 # ================================================================
 
 with st.sidebar:
+    # Remove top padding
+    st.markdown("""
+        <style>
+            .block-container {
+                padding-top: 1rem;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    st.markdown(
+        "**Entanglement Harvesting Explorer** (Alpha version)\n\n"
+        "by Marcos Morote-Balboa & T. Rick Perche\n\n")
+    st.markdown("---")
     st.header("χ(t) Switching Function")
     
     mode = st.radio("Input mode", ["Preset functions", "Custom function"],
@@ -369,9 +381,12 @@ with st.sidebar:
     # ---- About section ----
     st.markdown("---")
     st.markdown("### About")
+    st.markdown("This tool allows you to produce entanglement harvesting plots for a switching function χ(t) of your choice.\n ")
+     
+    st.markdown("We used the method presented in [1], expanding the switching function in a truncated Hermite basis up to order N=150.")
+    st.markdown( "In our conventions, 𝒩 is defined as the negativity,  𝒩⁺ as the genuine harvested negativity and 𝒩⁻ is used alongside Δ, the signalling, to estimate the communication with CMEE ([2]).\n"
+      "For dimensional considerations, everything is scaled by an arbitrary time parameter T0, and our baseline case is a Gaussian switching function separated by a distance L=5T0 (for simplicity, we set T0=1 and L=5).")
     st.markdown(
-        "**Entanglement Harvesting Explorer** (Alpha version)\n\n"
-        "by Marcos Morote-Balboa & T. Rick Perche\n\n"
         "Source code and Mathematica (.wl) files (coming soon): "
         "[GitHub](https://github.com/YOUR_USERNAME/YOUR_REPO)"
     )
@@ -395,7 +410,7 @@ with st.sidebar:
 st.title("Entanglement Harvesting Explorer")
 st.caption(
     f"Hermite basis: N_max = {E['NMAX']}  |  "
-    f"T = {E['T_basis']}  |  L = {E['L_val']} |  "
+    f"T0 = {E['T_basis']}  |  L = {E['L_val']} |  "
     f"ω points = {E['n_omega']}"
 )
 
@@ -418,7 +433,7 @@ l2_relative_error = l2_diff / l2_input if l2_input > 0 else 0.0
 # Compute CMEE and SER at peak
 if neg_max > 0:
     idx_peak = np.argmax(neg)
-    abs_delta_peak = 2.0 * half_delta[idx_peak]
+    abs_delta_peak =  half_delta[idx_peak]
     w_peak = w_val[idx_peak]
     neg_peak = neg[idx_peak]
     cmee = max(0.0, (abs_delta_peak - w_peak) / neg_peak)
@@ -508,8 +523,28 @@ w_vis = w_val[visible_mask]
 if neg_max > 0:
     vis_neg_peak = float(np.max(neg_vis))
     y_top = vis_neg_peak / 0.70
+    
+    # Find the right power of 10 for the axis
+    exponent = int(np.floor(np.log10(vis_neg_peak)))
+    scale = 10.0 ** exponent
+    
+    # Normalize all data by this scale
+    neg_plot = neg_vis / scale
+    neg_plus_plot = neg_plus_vis / scale
+    neg_minus_plot = neg_minus_vis / scale
+    hd_plot = hd_vis / scale
+    y_top_plot = vis_neg_peak / scale / 0.70
+    
+    y_label = f"× 10^{exponent}"
 else:
-    y_top = 1.0
+    neg_plot = neg_vis
+    neg_plus_plot = neg_plus_vis
+    neg_minus_plot = neg_minus_vis
+    hd_plot = hd_vis
+    y_top_plot = 1.0
+    scale = 1.0
+    exponent = 0
+    y_label = ""
 
 # Precompute CMEE and SER for every visible omega point
 abs_delta_all = 2.0 * hd_vis
@@ -520,10 +555,10 @@ ser_all = np.where(neg_vis > 0,
                     abs_delta_all / np.where(neg_vis > 0, neg_vis, 1.0),
                     0.0)
 
-# Single hover text (shown once via the N trace)
+# Hover still shows real (unscaled) values
 hover_main = [
     f"Ω = {o:.2f}<br>"
-    f"𝒩 = {n:.3e}<br>"
+    f"N = {n:.3e}<br>"
     f"½|Δ| = {h:.3e}<br>"
     f"CMEE = {c:.4f}<br>"
     f"SER = {s:.4f}"
@@ -532,28 +567,28 @@ hover_main = [
 
 fig3 = go.Figure()
 fig3.add_trace(go.Scatter(
-    x=omega_vis.tolist(), y=neg_vis.tolist(),
+    x=omega_vis.tolist(), y=neg_plot.tolist(),
     mode='lines',
-    name='λ⁻² 𝒩',
+    name='λ⁻² N',
     line=dict(color='blue', width=2),
     text=hover_main, hoverinfo='text',
 ))
 fig3.add_trace(go.Scatter(
-    x=omega_vis.tolist(), y=neg_plus_vis.tolist(),
+    x=omega_vis.tolist(), y=neg_plus_plot.tolist(),
     mode='lines',
-    name='λ⁻² 𝒩⁺ (Δ=0)',
+    name='λ⁻² N⁺ (Δ=0)',
     line=dict(color='royalblue', width=1.5, dash='dash'),
     hoverinfo='skip',
 ))
 fig3.add_trace(go.Scatter(
-    x=omega_vis.tolist(), y=neg_minus_vis.tolist(),
+    x=omega_vis.tolist(), y=neg_minus_plot.tolist(),
     mode='lines',
-    name='λ⁻² 𝒩⁻ (H=0)',
+    name='λ⁻² N⁻ (H=0)',
     line=dict(color='cornflowerblue', width=1.5, dash='dot'),
     hoverinfo='skip',
 ))
 fig3.add_trace(go.Scatter(
-    x=omega_vis.tolist(), y=hd_vis.tolist(),
+    x=omega_vis.tolist(), y=hd_plot.tolist(),
     mode='lines',
     name='½ λ⁻² |Δ|',
     line=dict(color='red', width=2),
@@ -562,18 +597,17 @@ fig3.add_trace(go.Scatter(
 
 fig3.update_layout(
     title=(
-        f"max 𝒩 = {neg_max:.3e}  at Ω = {omega_at_max:.2f}"
+        f"max N = {neg_max:.3e}  at Ω = {omega_at_max:.2f}"
         f"   |   CMEE = {cmee:.4f}   |   SER = {ser:.4f}"
         if neg_max > 0
         else "No entanglement detected"
     ),
     xaxis_title="Ω",
+    yaxis_title=y_label,
     xaxis=dict(range=[0, float(om_max)]),
     yaxis=dict(
-        range=[0, y_top],
+        range=[0, y_top_plot],
         autorange=False,
-        exponentformat='power',
-        showexponent='all',
     ),
     height=450,
     margin=dict(l=60, r=20, t=40, b=40),
