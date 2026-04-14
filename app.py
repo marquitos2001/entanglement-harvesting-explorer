@@ -252,34 +252,6 @@ def make_chi(family, params):
     else:
         return lambda t: np.exp(-t**2 / 2)
 
-# ================================================================
-# HELPER: Slider with adjustable range
-# ================================================================
-
-def adjustable_slider(label, default_min, default_max, default_val, step, key_prefix):
-    """Slider with user-adjustable min/max bounds."""
-    cols = st.columns([1, 1, 2])
-    with cols[0]:
-        v_min = st.number_input("min", value=default_min, step=step,
-                                 key=f"{key_prefix}_min", label_visibility="collapsed",
-                                 format="%.2f")
-    with cols[1]:
-        v_max = st.number_input("max", value=default_max, step=step,
-                                 key=f"{key_prefix}_max", label_visibility="collapsed",
-                                 format="%.2f")
-    
-    # Ensure min < max
-    if v_min >= v_max:
-        v_max = v_min + step
-    
-    # Clamp default to range
-    clamped_default = max(v_min, min(v_max, default_val))
-    
-    with cols[2]:
-        val = st.slider(label, float(v_min), float(v_max), float(clamped_default), step,
-                        key=f"{key_prefix}_slider")
-    
-    return val
 
 # ================================================================
 # SIDEBAR
@@ -302,53 +274,52 @@ with st.sidebar:
             "Poly bump", "Top hat", "Smooth step", "Gauss × cos",
             "Lorentzian", "Sech"
         ])
+        func_label = family
         params = {}
-        
-        st.caption("Left boxes: min / max range for slider")
         
         if family == "Gaussian":
             params['t0'] = 0.0
-            params['sigma'] = adjustable_slider("σ", 0.3, 3.0, 1.0, 0.05, "gauss_sig")
+            params['sigma'] = st.slider("σ", 0.3, 3.0, 1.0, 0.05)
             func_label = "exp(−t²/(2σ²))"
         
         elif family == "Gaussian pair":
-            params['sigma'] = adjustable_slider("σ", 0.3, 3.0, 1.0, 0.05, "gp_sig")
-            params['separation'] = adjustable_slider("separation d", 0.1, 3.0, 1.0, 0.1, "gp_sep")
+            params['sigma'] = st.slider("σ", 0.3, 3.0, 1.0, 0.05)
+            params['separation'] = st.slider("separation d", 0.1, 3.0, 1.0, 0.1)
             func_label = "exp(−(t−d)²/(2σ²)) + exp(−(t+d)²/(2σ²))"
         
         elif family == "Bump":
-            params['T0'] = adjustable_slider("T₀", 0.3, 3.0, 1.0, 0.05, "bump_T0")
+            params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
             func_label = "exp(−T₀²/(T₀²−t²)) · θ(T₀−|t|)"
         
         elif family == "Cos² window":
-            params['T0'] = adjustable_slider("T₀", 0.3, 3.0, 1.0, 0.05, "cos2_T0")
+            params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
             func_label = "cos²(πt/(2T₀)) · θ(T₀−|t|)"
         
         elif family == "Poly bump":
-            params['T0'] = adjustable_slider("T₀", 0.3, 3.0, 1.0, 0.05, "poly_T0")
+            params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
             params['n'] = st.slider("n (power)", 1, 8, 3, 1)
             func_label = "(1−(t/T₀)²)ⁿ · θ(T₀−|t|)"
         
         elif family == "Top hat":
-            params['T0'] = adjustable_slider("T₀", 0.3, 3.0, 1.0, 0.05, "th_T0")
+            params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
             func_label = "θ(T₀−|t|)"
         
         elif family == "Smooth step":
-            params['T0'] = adjustable_slider("T₀", 0.3, 3.0, 1.0, 0.05, "ss_T0")
-            params['alpha'] = adjustable_slider("α (steepness)", 1.0, 20.0, 5.0, 0.5, "ss_alpha")
+            params['T0'] = st.slider("T₀", 0.3, 3.0, 1.0, 0.05)
+            params['alpha'] = st.slider("α (steepness)", 1.0, 20.0, 5.0, 0.5)
             func_label = "¼(1+tanh(α(t+T₀)))(1−tanh(α(t−T₀)))"
         
         elif family == "Gauss × cos":
-            params['sigma'] = adjustable_slider("σ", 0.3, 3.0, 1.0, 0.05, "gc_sig")
-            params['freq'] = adjustable_slider("ω_cos", 0.5, 15.0, 3.0, 0.5, "gc_freq")
+            params['sigma'] = st.slider("σ", 0.3, 3.0, 1.0, 0.05)
+            params['freq'] = st.slider("ω_cos", 0.5, 15.0, 3.0, 0.5)
             func_label = "exp(−t²/(2σ²)) · cos(ωt)"
         
         elif family == "Lorentzian":
-            params['gamma'] = adjustable_slider("γ", 0.3, 3.0, 1.0, 0.05, "lor_gamma")
+            params['gamma'] = st.slider("γ", 0.3, 3.0, 1.0, 0.05)
             func_label = "1/(1+(t/γ)²)"
         
         elif family == "Sech":
-            params['width'] = adjustable_slider("width w", 0.3, 3.0, 1.0, 0.05, "sech_w")
+            params['width'] = st.slider("width w", 0.3, 3.0, 1.0, 0.05)
             func_label = "sech(t/w)"
         
         chi_func = make_chi(family, params)
@@ -487,7 +458,7 @@ with top_right:
         name='χ(t) reconstructed',
     ))
     fig2.update_layout(
-        title=f"Basis reconstruction",
+        title=f"Basis reconstruction — Captured: {100 * captured:.2f}%",
         xaxis_title="t", yaxis_title="χ(t)",
         height=350, margin=dict(l=50, r=20, t=40, b=40),
         legend=dict(
