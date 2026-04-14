@@ -466,7 +466,7 @@ with top_right:
             yanchor='bottom',
             y=1.02,
             xanchor='center',
-            x=0.5,
+            x=0.8,
             font=dict(size=11),
         ),
     )
