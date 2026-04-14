@@ -605,9 +605,11 @@ fig3.update_layout(
     xaxis_title="Ω",
     yaxis_title=y_label,
     xaxis=dict(range=[0, float(om_max)]),
-    yaxis=dict(
+     yaxis=dict(
         range=[0, y_top_plot],
         autorange=False,
+        tickvals=[i * y_top_plot / 5 for i in range(6)],
+        ticktext=[f"{i * y_top_plot / 5:.1f}×10<sup>{exponent}</sup>" for i in range(6)],
     ),
     height=450,
     margin=dict(l=60, r=20, t=40, b=40),
