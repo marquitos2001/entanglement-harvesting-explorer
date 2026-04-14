@@ -339,9 +339,10 @@ with st.sidebar:
     st.markdown("#### References")
     st.markdown(
         "1. M. Morote-Balboa, T. R. Perche, "
-        "\"Switching function-independent results for entanglement harvesting,\" "
+        "\"Optimization of entanglement harvesting with arbitrary temporal profiles:
+         the limit of second order perturbation theory,\" "
         "[arXiv:2604.06303](https://doi.org/10.48550/arXiv.2604.06303)\n"
-        "3. M. Morote Balboa, T. R. Perche, "
+        "3. M. Morote-Balboa, T. R. Perche, "
         "[arXiv:2604.06303](https://doi.org/10.48550/arXiv.2604.06303) — SER\n"
         "2. E. Tjoa, E. Martín-Martínez, "
         "\"When entanglement harvesting is not really harvesting,\" "
