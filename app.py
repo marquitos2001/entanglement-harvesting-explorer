@@ -450,7 +450,7 @@ with top_right:
     fig2.add_trace(go.Scatter(
         x=t_plot, y=chi_plot,
         mode='lines', line=dict(color='green', width=2, dash='dot'),
-        name='χ(t) input',
+        name='χ(t)',
     ))
     fig2.add_trace(go.Scatter(
         x=t_plot, y=chi_reconstructed,
@@ -464,7 +464,7 @@ with top_right:
         legend=dict(
             orientation='h',
             yanchor='bottom',
-            y=1.02,
+            y=1.04,
             xanchor='center',
             x=0.8,
             font=dict(size=11),
