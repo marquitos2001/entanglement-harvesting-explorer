@@ -443,7 +443,7 @@ else:
     ser = 0.0
 
 # ---- METRICS ROW ----
-col1, col2, col3, col4, col5 = st.columns([ 1, 1, 2.5, 2.5, 1.5])
+col1, col2, col3, col4, col5 = st.columns([ 1.5, 1, 2.5, 2, 1.5])
 col1.metric("Max negativity", f"{neg_max:.3e}")
 col2.metric("at Ω =", f"{omega_at_max:.2f}")
 col3.metric("Communication-mediated entanglement estimator (CMEE) I[ρ]", f"{cmee:.4f}" if neg_max > 0 else "0")
