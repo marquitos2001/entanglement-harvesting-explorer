@@ -387,8 +387,8 @@ with st.sidebar:
     st.markdown( "In our conventions, 𝒩 is defined as the negativity,  𝒩⁺ as the genuine harvested negativity and 𝒩⁻ is used alongside Δ, the signalling, to estimate the communication with CMEE ([2]).\n"
       "For dimensional considerations, everything is scaled by an arbitrary time parameter T0, and our baseline case is a Gaussian switching function separated by a distance L=5T0 (for simplicity, we set T0=1 and L=5).")
     st.markdown(
-        "Source code and Mathematica (.wl) files (coming soon): "
-        "[GitHub](https://github.com/YOUR_USERNAME/YOUR_REPO)"
+        "Source code and Mathematica (.wl) files : "
+        "[GitHub]https://github.com/marquitos2001/entanglement-harvesting-explorer)"
     )
     st.markdown("#### References")
     st.markdown(
