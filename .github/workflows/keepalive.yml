@@ -9,7 +9,7 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Streamlit app
+      - name: Ping health endpoint
         run: |
-          curl -L --fail --max-time 30 https://entanglement-harvesting-explorer.streamlit.app/
-          curl -L --fail --max-time 30 https://entanglement-harvesting-explorer.streamlit.app/_stcore/health
+          curl --fail --max-redirs 3 --max-time 30 \
+            https://entanglement-harvesting-explorer.streamlit.app/_stcore/health
