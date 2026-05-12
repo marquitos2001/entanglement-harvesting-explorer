@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue May 12 12:44:11 2026
-
-@author: Marcos Morote Balboa
-"""
-
 """
 UDW Entanglement Harvesting Explorer - Streamlit version
 Run with:  python -m streamlit run app.py
