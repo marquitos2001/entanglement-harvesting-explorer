@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue May 12 12:44:11 2026
+
+@author: Marcos Morote Balboa
+"""
+
 """
 UDW Entanglement Harvesting Explorer - Streamlit version
 Run with:  python -m streamlit run app.py
@@ -112,13 +119,12 @@ class SafeMathParser:
 # LOAD DATA
 # ================================================================
 @st.cache_resource
-def load_engine():
+def load_engine(h5_path):
     NMAX = 150
     T0 = 1.0
     n_basis = NMAX + 1
-    H5_PATH = "TOOL_data_n_150_small.h5"
     
-    with h5py.File(H5_PATH, 'r') as f:
+    with h5py.File(h5_path, 'r') as f:
         omega_grid = f['omegas'][:]
         H_real = f['Hreal'][:]
         H_imag = f['Himag'][:]
@@ -158,7 +164,6 @@ def load_engine():
         't_grid': t_grid, 'dt': dt_val, 'h_basis': h_basis,
     }
 
-E = load_engine()
 
 # ================================================================
 # CORE COMPUTATION
@@ -280,6 +285,25 @@ with st.sidebar:
         "**Entanglement Harvesting Explorer** (Alpha version)\n\n"
         "by Marcos Morote-Balboa & T. Rick Perche\n\n")
     st.markdown("---")
+
+    # ---- Dataset (basis) selection ----
+    basis_choice = st.radio(
+        "Switching-function support",
+        ["Non-compact (Hermite)", "Compactly supported"],
+        horizontal=True,
+        help=(
+            "Non-compact: standard Hermite basis on ℝ. "
+            "Compact: T is rescaled so the basis functions have compact support."
+        ),
+    )
+    H5_PATH = (
+        "TOOL_data_n_150_small.h5"
+        if basis_choice == "Non-compact (Hermite)"
+        else "TOOL_TN_data_n_150.h5"
+    )
+    E = load_engine(H5_PATH)
+    st.markdown("---")
+
     st.header("χ(t) Switching Function")
     
     mode = st.radio("Input mode", ["Preset functions", "Custom function"],
@@ -409,7 +433,8 @@ with st.sidebar:
 
 st.title("Entanglement Harvesting Explorer")
 st.caption(
-    f"Hermite basis: N_max = {E['NMAX']}  |  "
+    f"Basis: {basis_choice}  |  "
+    f"N_max = {E['NMAX']}  |  "
     f"T0 = {E['T_basis']}  |  L = {E['L_val']} |  "
     f"ω points = {E['n_omega']}"
 )
@@ -653,6 +678,7 @@ with st.expander("📥 Export data", expanded=False):
 
     meta = [
         f"Function: {func_label}",
+        f"Basis: {basis_choice}",
         f"Captured: {100*captured:.4f}%",
         f"L2 relative error: {l2_relative_error:.6e}",
         f"Max negativity: {neg_max:.6e} at Omega = {omega_at_max:.2f}",
