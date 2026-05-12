@@ -292,7 +292,7 @@ with st.sidebar:
     H5_PATH = (
         "TOOL_data_n_150_small.h5"
         if basis_choice == "Non-compact (Hermite)"
-        else "TOOL_TN_data_n_150.h5"
+        else "TOOL_TN_data_n_150_small.h5"
     )
     E = load_engine(H5_PATH)
     st.markdown("---")
